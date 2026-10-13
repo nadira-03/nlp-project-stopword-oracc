@@ -1,0 +1,43 @@
+{
+  "cams": {
+    "nltk_words_present": [
+      "an",
+      "i",
+      "in",
+      "is"
+    ],
+    "top_K_hits": []
+  },
+  "dcclt": {
+    "nltk_words_present": [
+      "a",
+      "an",
+      "i",
+      "in",
+      "is",
+      "ma"
+    ],
+    "top_K_hits": []
+  },
+  "ribo": {
+    "nltk_words_present": [
+      "a",
+      "as",
+      "in",
+      "of",
+      "on"
+    ],
+    "top_K_hits": []
+  },
+  "rinap": {
+    "nltk_words_present": [],
+    "top_K_hits": []
+  },
+  "saao": {
+    "nltk_words_present": [
+      "in",
+      "same"
+    ],
+    "top_K_hits": []
+  }
+}

@@ -69,3 +69,84 @@ def run_zipf(label, get_tokens):
 
 def run_heaps(label, get_tokens):
     return _run("heaps", label, get_tokens)
+
+# 5
+
+def _linfit(lx, ly):
+    slope, _ = np.polyfit(lx, ly, 1)
+    r2 = np.corrcoef(lx, ly)[0, 1] ** 2
+    return slope, r2
+
+def zipf_quick(codes):
+    freq = np.sort(np.bincount(codes))[::-1]
+    freq = freq[freq > 0]
+    rank = np.arange(1, len(freq) + 1)
+    slope, r2 = _linfit(np.log10(rank), np.log10(freq))
+    return -slope, r2
+
+def heaps_quick(codes, n_points=300):
+    N = len(codes)
+    _, first_idx = np.unique(codes, return_index=True)
+    indicator = np.zeros(N)
+    indicator[first_idx] = 1
+    vocab = np.cumsum(indicator)
+    n = np.unique(np.logspace(0, np.log10(N), n_points).astype(int))
+    n = n[(n >= 1) & (n <= N)]
+    slope, r2 = _linfit(np.log10(n), np.log10(vocab[n - 1]))
+    return slope, r2
+
+METRICS = ["zipf_alpha", "zipf_R2", "heaps_beta", "heaps_R2"]
+
+def _metrics(codes):
+    a, r2z = zipf_quick(codes)
+    b, r2h = heaps_quick(codes)
+    return {"zipf_alpha": a, "zipf_R2": r2z, "heaps_beta": b, "heaps_R2": r2h}
+
+def bootstrap_removal(df, corpus, stop_sets, n_boot=200, seed=0):
+    """Compare Zipf/Heaps fits before and after removing each stopword set.
+    Resamples whole documents (text_id) with replacement."""
+    rng = np.random.default_rng(seed)
+    codes, uniques = pd.factorize(df["token"])
+    flags = {lab: np.array([t in s for t in uniques]) for lab, s in stop_sets.items()}
+
+    text_ids = df["text_id"].to_numpy()
+    bounds = np.flatnonzero(text_ids[1:] != text_ids[:-1]) + 1
+    docs = np.split(codes, bounds)
+
+    def compare(sample):
+        base = _metrics(sample)
+        after = {lab: _metrics(sample[~f[sample]]) for lab, f in flags.items()}
+        return base, after
+
+    base_pt, after_pt = compare(codes)          # point estimates on the real corpus
+    reps = []
+    for _ in range(n_boot):
+        pick = rng.integers(0, len(docs), len(docs))
+        reps.append(compare(np.concatenate([docs[i] for i in pick])))
+
+    rows = []
+    for lab, f in flags.items():
+        types_removed = int(f.sum())
+        pct_removed = round(100 * f[codes].mean(), 2)
+        for m in METRICS:
+            diff = np.array([after[lab][m] - base[m] for base, after in reps])
+            if np.all(diff == 0):
+                p = 1.0
+            else:
+                p = min(1.0, 2 * min((diff > 0).mean(), (diff < 0).mean()))
+                p = max(p, 1 / n_boot)          # bootstrap p cannot go below 1/n_boot
+            rows.append({
+                "corpus": corpus,
+                "stoplist": lab,
+                "types_removed": types_removed,
+                "pct_tokens_removed": pct_removed,
+                "metric": m,
+                "before": round(base_pt[m], 4),
+                "after": round(after_pt[lab][m], 4),
+                "delta": round(after_pt[lab][m] - base_pt[m], 4),
+                "boot_mean_delta": round(diff.mean(), 4),
+                "ci90_low": round(np.percentile(diff, 5), 4),
+                "ci90_high": round(np.percentile(diff, 95), 4),
+                "p_boot": round(p, 3),
+            })
+    return pd.DataFrame(rows)

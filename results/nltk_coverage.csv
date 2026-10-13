@@ -1,0 +1,6 @@
+corpus,vocab,K,hits_in_top_K,proportion,pct_tokens_that_are_nltk_sw
+cams,17580,4,0,0.0,0.04
+dcclt,12382,6,0,0.0,0.13
+ribo,4551,5,0,0.0,0.1
+rinap,7980,0,0,,0.0
+saao,23541,2,0,0.0,0.0
