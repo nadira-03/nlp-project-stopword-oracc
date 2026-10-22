@@ -1,90 +1,48 @@
 import html
-import re
 from pathlib import Path
 import pandas as pd
 
-RAW = Path("data/raw")
-OUT = Path("data/processed")
-RES = Path("results")
-OUT.mkdir(parents=True, exist_ok=True)
-RES.mkdir(exist_ok=True)
+CORPORA = ["cams", "dcclt", "ribo", "rinap", "saao"]
+Path("data/processed").mkdir(parents=True, exist_ok=True)
+Path("results").mkdir(exist_ok=True)
 
-CORPORA = {
-    "cams": "oracc_cams.vrt",
-    "dcclt": "oracc_dcclt.vrt",
-    "ribo": "oracc_ribo.vrt",
-    "rinap": "oracc_rinap.vrt",
-    "saao": "oracc_saao.vrt"
-}
-
-def extract(path, corpus):
-    """Read one .vrt file line by line and return a DataFrame, one row per token."""
+def extract(path):
     rows = []
-    text_id = period = genre = None
-    sent_id = 0
-    skipped = 0
-
-    with open(path, encoding = "utf-8") as f:
+    text_id, sent_id = None, 0
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.rstrip("\n")
             if line.startswith("<text"):
-                m = re.search(r'url="([^"]*)"', line)
-                text_id = m.group(1).rstrip("/").split("/")[-1] if m else None
-                m = re.search(r'period="([^"]*)"', line)
-                period = m.group(1) if m else None
-                m = re.search(r'genre="([^"]*)"', line)
-                genre = m.group(1) if m else None
+                text_id = line.split('url="')[1].split('"')[0].rstrip("/").split("/")[-1]
             elif line.startswith("<sentence"):
                 sent_id += 1
             elif line.startswith("<") or not line.strip():
-                continue # closing tags, paragraph tags, blank lines
+                continue                          # other tags and blank lines
             else:
                 cols = line.split("\t")
-                if len(cols) < 5:
-                    skipped += 1
-                    continue
-                token = html.unescape(cols[1]).strip().lower()  # column 2
-                lemma = html.unescape(cols[2]).strip().lower()  # column 3
-                pos = cols[4].strip()                           # column 5
-                if not token:
-                    skipped += 1
-                    continue
-                rows.append((corpus, text_id, sent_id, token, lemma, pos, period, genre))
+                if len(cols) >= 5:
+                    token = html.unescape(cols[1]).strip().lower()   # column 2 shows normalised form
+                    if token:
+                        rows.append((text_id, sent_id, token, cols[4].strip()))  # column 5 = PoS
+    return pd.DataFrame(rows, columns=["text_id", "sent_id", "token", "pos"])
 
-    df = pd.DataFrame(
-        rows,
-        columns=["corpus", "text_id", "sent_id", "token", "lemma", "pos", "period", "genre"],
-    )
-    df["is_placeholder"] = df["token"] == "_"
-    print(f"{corpus}: {len(df)} tokens kept, {skipped} lines skipped")
-    return df
+stats = []
+for name in CORPORA:
+    path = next(Path("data/raw").rglob(f"oracc_{name}.vrt"))
+    df = extract(path)
+    df.to_csv(f"data/processed/{name}.csv", index=False)
 
-def compute_stats(df, corpus):
-    char_len = df["token"].str.len()
-    sent_len = df.groupby("sent_id").size()
-    return {
-        "corpus": corpus,
-        "tokens": len(df),
-        "vocab_size": df["token"].nunique(),
-        "char_min": char_len.min(),
-        "char_max": char_len.max(),
-        "char_mean": round(char_len.mean(), 2),
-        "sent_count": len(sent_len),
-        "sent_min": sent_len.min(),
-        "sent_max": sent_len.max(),
-        "sent_mean": round(sent_len.mean(), 2),
-    }
+    clean = df[df["token"] != "_"]                # leave out the "_" placeholder tokens
+    chars = clean["token"].str.len()
+    sent = clean.groupby("sent_id").size()
+    stats.append({
+        "corpus": name,
+        "tokens": len(clean),
+        "vocab_size": clean["token"].nunique(),
+        "char_min": chars.min(), "char_max": chars.max(), "char_mean": round(chars.mean(), 2),
+        "sent_min": sent.min(), "sent_max": sent.max(), "sent_mean": round(sent.mean(), 2),
+    })
 
-if __name__ == "__main__":
-    all_stats = []
-    for corpus, filename in CORPORA.items():
-        path = next(RAW.rglob(filename))
-        df = extract(path, corpus)
-        df.to_csv(OUT / f"{corpus}.csv", index=False, encoding="utf-8")
-        clean = df[~df["is_placeholder"]]
-        all_stats.append(compute_stats(clean, corpus))
-
-    table = pd.DataFrame(all_stats)
-    table.to_csv(RES / "corpus_stats.csv", index=False)
-    print()
-    print(table.to_string(index=False))
+table = pd.DataFrame(stats)
+table.to_csv("results/corpus_stats.csv", index=False)
+print(table.to_string(index=False))
