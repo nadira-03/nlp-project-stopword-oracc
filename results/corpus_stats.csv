@@ -1,0 +1,6 @@
+corpus,tokens,vocab_size,char_min,char_max,char_mean,sent_min,sent_max,sent_mean
+cams,115592,17580,1,23,5.18,1,209,6.5
+dcclt,47103,12382,1,20,5.42,1,1106,42.98
+ribo,19134,4551,1,20,5.37,1,194,21.35
+rinap,75129,7980,1,27,5.42,1,180,31.45
+saao,219889,23541,1,35,5.3,1,200,6.98

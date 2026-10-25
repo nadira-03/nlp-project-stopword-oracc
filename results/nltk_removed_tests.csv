@@ -1,0 +1,11 @@
+corpus,law,delta_R2,ci90_low,ci90_high,verdict
+cams,zipf,0.0,0.0,0.0001,no meaningful change
+cams,heaps,-0.0,-0.0,0.0,no meaningful change
+dcclt,zipf,0.0,-0.0001,0.0001,no meaningful change
+dcclt,heaps,-0.0,-0.0,0.0,no meaningful change
+ribo,zipf,-0.0,-0.0,0.0002,no meaningful change
+ribo,heaps,-0.0,-0.0,0.0,no meaningful change
+rinap,zipf,0.0,0.0,0.0,no meaningful change
+rinap,heaps,0.0,0.0,0.0,no meaningful change
+saao,zipf,-0.0,-0.0,0.0,no meaningful change
+saao,heaps,-0.0,-0.0,0.0,no meaningful change
