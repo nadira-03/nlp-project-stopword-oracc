@@ -1,5 +1,4 @@
 import json
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -8,32 +7,29 @@ from scipy.spatial.distance import jensenshannon
 CORPORA = ["cams", "dcclt", "ribo", "rinap", "saao"]
 
 with open("results/gerlach_stoplist.json", encoding="utf-8") as f:
-    stoplists = json.load(f)                  # made by: python 03_stopwords.py lists
+    stoplists = json.load(f)
 
 for name in CORPORA:
-    df = pd.read_csv(f"data/processed/{name}.csv", keep_default_na=False)   # keeps the "_" rows, so neighbours are correct
+    df = pd.read_csv(f"data/processed/{name}.csv", keep_default_na=False)
     stats = pd.read_csv(f"results/gerlach_stats_{name}.csv", index_col="token", keep_default_na=False)
-    top = stats.loc[stoplists[name], "N"].sort_values(ascending=False).head(30).index  # 30 most frequent stopwords
+    top = stats.loc[stoplists[name], "N"].sort_values(ascending=False).head(30).index
 
-    # PoS tag of the token before and after each word, only inside the same sentence
     ok_prev = (df["sent_id"] == df["sent_id"].shift(1)) & (df["token"].shift(1) != "_")
     ok_next = (df["sent_id"] == df["sent_id"].shift(-1)) & (df["token"].shift(-1) != "_")
     prev_tag = df["pos"].shift(1).where(ok_prev)
     next_tag = df["pos"].shift(-1).where(ok_next)
 
-    # one histogram per stopword: how often each PoS tag is a neighbour
     is_sw = df["token"].isin(top)
     word = df.loc[is_sw, "token"]
     tags = pd.concat([pd.DataFrame({"word": word, "tag": prev_tag[is_sw]}),
                       pd.DataFrame({"word": word, "tag": next_tag[is_sw]})]).dropna()
     counts = tags.groupby(["word", "tag"]).size().unstack(fill_value=0)
-    counts = counts.loc[counts.sum(axis=1) >= 20]                        # drop words with too few neighbours
-    counts = counts.loc[[w for w in top if w in counts.index]]           # most frequent first
+    counts = counts.loc[counts.sum(axis=1) >= 20]
+    counts = counts.loc[[w for w in top if w in counts.index]]
     counts.to_csv(f"results/pos_profiles_{name}.csv", encoding="utf-8")
-    share = counts.div(counts.sum(axis=1), axis=0)                       # counts -> proportions
+    share = counts.div(counts.sum(axis=1), axis=0)
 
-    # plot the histograms of the 12 most frequent stopwords
-    common = counts.sum().sort_values(ascending=False).head(10).index    # 10 most common neighbour tags
+    common = counts.sum().sort_values(ascending=False).head(10).index
     fig, axes = plt.subplots(3, 4, figsize=(16, 9), sharey=True)
     for ax, w in zip(axes.ravel(), share.index[:12]):
         ax.bar(common, share.loc[w, common])
@@ -48,7 +44,6 @@ for name in CORPORA:
     fig.savefig(f"results/pos_histograms_{name}.png", dpi=150)
     plt.close(fig)
 
-    # similarity matrix: 1 - Jensen-Shannon distance between the histograms (1 = identical)
     P = share.to_numpy()
     n = len(P)
     sim = np.array([[1 - jensenshannon(P[i], P[j], base=2) for j in range(n)] for i in range(n)])

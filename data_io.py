@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.sparse import csr_matrix
 
-
 def texts_nwd_csr(list_texts):
     """Build the word x document count matrix from a list of documents
     (each a list of words). Words are indexed in sorted order."""

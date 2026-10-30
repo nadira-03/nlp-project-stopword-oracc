@@ -17,13 +17,13 @@ def extract(path):
             elif line.startswith("<sentence"):
                 sent_id += 1
             elif line.startswith("<") or not line.strip():
-                continue                          # other tags and blank lines
+                continue
             else:
                 cols = line.split("\t")
                 if len(cols) >= 5:
-                    token = html.unescape(cols[1]).strip().lower()   # column 2 shows normalised form
+                    token = html.unescape(cols[1]).strip().lower()
                     if token:
-                        rows.append((text_id, sent_id, token, cols[4].strip()))  # column 5 = PoS
+                        rows.append((text_id, sent_id, token, cols[4].strip()))
     return pd.DataFrame(rows, columns=["text_id", "sent_id", "token", "pos"])
 
 stats = []
@@ -32,7 +32,7 @@ for name in CORPORA:
     df = extract(path)
     df.to_csv(f"data/processed/{name}.csv", index=False)
 
-    clean = df[df["token"] != "_"]                # leave out the "_" placeholder tokens
+    clean = df[df["token"] != "_"]
     chars = clean["token"].str.len()
     sent = clean.groupby("sent_id").size()
     stats.append({

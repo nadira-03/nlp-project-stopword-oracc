@@ -15,7 +15,7 @@ step = sys.argv[1] if len(sys.argv) > 1 else "task4-5"
 
 def load_tokens(name):
     df = pd.read_csv(f"data/processed/{name}.csv", keep_default_na=False)
-    return df[df["token"] != "_"]                         # leave out "_" placeholders
+    return df[df["token"] != "_"]
 
 def fit_and_plot(ax, x, y, xlabel, ylabel, name, symbol, sign):
     """Line fit on log-log scale, drawn with a 90% band. Returns exponent and R2."""
@@ -34,25 +34,21 @@ def fit_and_plot(ax, x, y, xlabel, ylabel, name, symbol, sign):
     ax.legend()
     return exponent, model.rsquared
 
-
 def r2(x, y):
     """R2 of a straight-line fit on log-log scale (= squared correlation of the logs)."""
     return np.corrcoef(np.log10(x), np.log10(y))[0, 1] ** 2
-
 
 def zipf_r2(codes):
     freq = np.sort(np.bincount(codes))[::-1]
     freq = freq[freq > 0]
     return r2(np.arange(1, len(freq) + 1), freq)
 
-
 def heaps_r2(codes):
     first = np.zeros(len(codes))
-    first[np.unique(codes, return_index=True)[1]] = 1     # 1 where a word appears for the first time
+    first[np.unique(codes, return_index=True)[1]] = 1
     vocab = first.cumsum()
     n = np.unique(np.logspace(0, np.log10(len(codes)), 300).astype(int))
     return r2(n, vocab[n - 1])
-
 
 def verdict(delta, lo, hi, min_effect=0.001):
     if lo > 0 and delta > min_effect:
@@ -60,7 +56,6 @@ def verdict(delta, lo, hi, min_effect=0.001):
     if hi < 0 and delta < -min_effect:
         return "degrades"
     return "no meaningful change"
-
 
 def refit_and_test(label, stop_of):
     """Remove each corpus's stopwords (stop_of[name] is a set), refit Zipf and Heaps,
@@ -73,15 +68,13 @@ def refit_and_test(label, stop_of):
     for i, name in enumerate(CORPORA):
         df = load_tokens(name)
         stop = stop_of[name]
-        kept = df.loc[~df["token"].isin(stop), "token"]   # corpus after stopword removal
+        kept = df.loc[~df["token"].isin(stop), "token"]
 
-        # refit Zipf's law
         freq = kept.value_counts().to_numpy()
         rank = np.arange(1, len(freq) + 1)
         alpha, r2_zipf = fit_and_plot(axes_z.ravel()[i], rank, freq,
                                       "log10 rank", "log10 frequency", name, "alpha", -1)
 
-        # refit Heaps' law
         vocab = (~kept.duplicated()).cumsum().to_numpy()
         n = np.unique(np.logspace(0, np.log10(len(vocab)), 300).astype(int))
         beta, r2_heaps = fit_and_plot(axes_h.ravel()[i], n, vocab[n - 1],
@@ -93,7 +86,6 @@ def refit_and_test(label, stop_of):
                          "zipf_alpha": round(alpha, 3), "zipf_R2": round(r2_zipf, 4),
                          "heaps_beta": round(beta, 3), "heaps_R2": round(r2_heaps, 4)})
 
-        # statistical test: resample whole documents, compare R2 before and after removal
         codes, words = pd.factorize(df["token"])
         is_sw = np.array([w in stop for w in words])
         text = df["text_id"].to_numpy()
@@ -127,40 +119,36 @@ def refit_and_test(label, stop_of):
     print(tests.to_string(index=False))
 
 
-# ======================= TASK 6: Gerlach statistics (slow step) =======================
+# TASK 6
 if step == "gerlach":
     sys.path.append("external")
-    from filter_words import run_stopword_statistics     # the authors' code, unchanged
+    from filter_words import run_stopword_statistics
 
-    np.random.seed(0)                                    # their shuffling uses numpy's global random state
+    np.random.seed(0)
     for name in CORPORA:
         df = load_tokens(name)
-        texts = [g["token"].tolist() for _, g in df.groupby("text_id", sort=False)]  # one list of words per text
-        stats = run_stopword_statistics(texts, N_s=200)  # 200 random shuffles (the paper uses 1000)
+        texts = [g["token"].tolist() for _, g in df.groupby("text_id", sort=False)]
+        stats = run_stopword_statistics(texts, N_s=200)
         stats.index.name = "token"
         stats.to_csv(f"results/gerlach_stats_{name}.csv", encoding="utf-8")
         print(name, len(texts), "documents,", len(stats), "words")
 
 
-# ======================= TASK 6: Gerlach stopword lists =======================
+# stopword lists
 elif step == "lists":
     sys.path.append("external")
-    from filter_words import make_stopwordlist           # the authors' code, unchanged
-
+    from filter_words import make_stopwordlist
     rows, lists = [], {}
     for name in CORPORA:
         stats = pd.read_csv(f"results/gerlach_stats_{name}.csv", index_col="token",
                             keep_default_na=False)
-        frequent = stats[stats["N"] >= 10].copy()         # ignore words seen fewer than 10 times
-        frequent["I"] = frequent["I"].abs()               # rank by |I|, the absolute information content
+        frequent = stats[stats["N"] >= 10].copy()
+        frequent["I"] = frequent["I"].abs()
         sw = make_stopwordlist(frequent, method="INFOR", cutoff_type="p", cutoff_val=0.2)
         lists[name] = sw
-
-        # information content and TF-IDF of every stopword
         stats.loc[sw, ["N", "I", "tfidf"]].sort_values("N", ascending=False).to_csv(
             f"results/gerlach_list_{name}.csv", encoding="utf-8")
 
-        # the task 4 check, now for the Gerlach list
         K = len(sw)
         top_k = stats["N"].sort_values(ascending=False, kind="mergesort").index[:K]
         hits = len(set(top_k) & set(sw))
@@ -174,22 +162,20 @@ elif step == "lists":
     table6.to_csv("results/gerlach_coverage.csv", index=False)
     print(table6.to_string(index=False))
 
-
-# ======================= TASK 7: remove the Gerlach list and refit =======================
+# TASK 7
 elif step == "task7":
     with open("results/gerlach_stoplist.json", encoding="utf-8") as f:
         lists = json.load(f)
     refit_and_test("gerlach_removed", {name: set(lists[name]) for name in CORPORA})
 
-
-# ======================= TASKS 4 and 5: NLTK list (default) =======================
+# TASKS 4 and 5
 else:
     rows = []
     for name in CORPORA:
-        counts = load_tokens(name)["token"].value_counts()    # most frequent first
-        present = [w for w in nltk_sw if w in counts.index]   # NLTK stopwords found in this corpus
+        counts = load_tokens(name)["token"].value_counts()
+        present = [w for w in nltk_sw if w in counts.index]
         K = len(present)
-        hits = sum(w in nltk_sw for w in counts.index[:K])    # how many of the K most frequent are NLTK
+        hits = sum(w in nltk_sw for w in counts.index[:K])
         rows.append({"corpus": name, "K": K, "hits_in_top_K": hits,
                      "proportion": round(hits / K, 3) if K else float("nan")})
     table4 = pd.DataFrame(rows)
