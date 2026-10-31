@@ -116,7 +116,6 @@ def refit_and_test(label, stop_of):
     print()
     print(tests.to_string(index=False))
 
-
 # TASK 6
 if step == "gerlach":
     sys.path.append("external")
