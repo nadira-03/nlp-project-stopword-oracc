@@ -12,7 +12,6 @@ def fit_and_plot(ax, x, y, xlabel, ylabel, name, symbol, sign):
     model = sm.OLS(ly, X).fit()
     band = model.get_prediction(X).summary_frame(alpha=0.10)
     exponent = sign * model.params[1]
-
     ax.scatter(lx, ly, s=5, alpha=0.5, label="data")
     ax.plot(lx, band["mean"], color="red", label="fit")
     ax.fill_between(lx, band["obs_ci_lower"], band["obs_ci_upper"],
@@ -34,17 +33,13 @@ for i, name in enumerate(CORPORA):
     # Task 2
     freq = tokens.value_counts().to_numpy()
     rank = np.arange(1, len(freq) + 1)
-    alpha, r2_zipf = fit_and_plot(axes_z.ravel()[i], rank, freq,
-                                  "log10 rank", "log10 frequency", name, "alpha", -1)
+    alpha, r2_zipf = fit_and_plot(axes_z.ravel()[i], rank, freq, "log10 rank", "log10 frequency", name, "alpha", -1)
 
     # Task 3
     vocab = (~tokens.duplicated()).cumsum().to_numpy()
     n = np.unique(np.logspace(0, np.log10(len(vocab)), 300).astype(int))
-    beta, r2_heaps = fit_and_plot(axes_h.ravel()[i], n, vocab[n - 1],
-                                  "log10 number of tokens", "log10 vocabulary size",
-                                  name, "beta", 1)
-    rows.append({"corpus": name, "zipf_alpha": round(alpha, 3), "zipf_R2": round(r2_zipf, 4),
-                 "heaps_beta": round(beta, 3), "heaps_R2": round(r2_heaps, 4)})
+    beta, r2_heaps = fit_and_plot(axes_h.ravel()[i], n, vocab[n - 1], "log10 number of tokens", "log10 vocabulary size", name, "beta", 1)
+    rows.append({"corpus": name, "zipf_alpha": round(alpha, 3), "zipf_R2": round(r2_zipf, 4), "heaps_beta": round(beta, 3), "heaps_R2": round(r2_heaps, 4)})
 
 axes_z.ravel()[-1].axis("off")
 axes_h.ravel()[-1].axis("off")

@@ -77,12 +77,10 @@ def refit_and_test(label, stop_of):
 
         vocab = (~kept.duplicated()).cumsum().to_numpy()
         n = np.unique(np.logspace(0, np.log10(len(vocab)), 300).astype(int))
-        beta, r2_heaps = fit_and_plot(axes_h.ravel()[i], n, vocab[n - 1],
-                                      "log10 number of tokens", "log10 vocabulary size",
-                                      name, "beta", 1)
+        beta, r2_heaps = fit_and_plot(axes_h.ravel()[i], n, vocab[n - 1], "log10 number of tokens", "log10 vocabulary size", name, "beta", 1)
         fit_rows.append({"corpus": name,
                          "types_removed": df["token"].nunique() - kept.nunique(),
-                         "pct_tokens_removed": round(100 * (1 - len(kept) / len(df)), 2),
+                         "pct_tokens_removed": round(100 * (1 - len(kept) / len(df)), 2), 
                          "zipf_alpha": round(alpha, 3), "zipf_R2": round(r2_zipf, 4),
                          "heaps_beta": round(beta, 3), "heaps_R2": round(r2_heaps, 4)})
 
@@ -132,7 +130,6 @@ if step == "gerlach":
         stats.index.name = "token"
         stats.to_csv(f"results/gerlach_stats_{name}.csv", encoding="utf-8")
         print(name, len(texts), "documents,", len(stats), "words")
-
 
 # stopword lists
 elif step == "lists":

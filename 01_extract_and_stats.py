@@ -31,7 +31,6 @@ for name in CORPORA:
     path = next(Path("data/raw").rglob(f"oracc_{name}.vrt"))
     df = extract(path)
     df.to_csv(f"data/processed/{name}.csv", index=False)
-
     clean = df[df["token"] != "_"]
     chars = clean["token"].str.len()
     sent = clean.groupby("sent_id").size()
